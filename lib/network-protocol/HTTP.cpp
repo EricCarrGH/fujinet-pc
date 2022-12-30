@@ -97,6 +97,9 @@ bool NetworkProtocolHTTP::special_set_channel_mode(cmdFrame_t *cmdFrame)
     case 4:
         httpChannelMode = SEND_POST_DATA;
         break;
+    case 5:
+        httpChannelMode = SET_HTML_FILTER;
+        break;
     default:
         error = NETWORK_ERROR_INVALID_COMMAND;
         err = true;
@@ -114,7 +117,7 @@ bool NetworkProtocolHTTP::open_file_handle()
     switch (aux1_open)
     {
     case 4:  // GET with no headers, filename resolve
-    case 12: // GET with ability to set headers, no filename resolve.
+    case 12: // GET with ability to set headers, html filter, no filename resolve.
         httpOpenMode = GET;
         break;
     case 8: // WRITE, filename resolve, ignored if not found.
@@ -329,6 +332,7 @@ bool NetworkProtocolHTTP::status_file(NetworkStatus *status)
     case SET_HEADERS:
     case COLLECT_HEADERS:
     case SEND_POST_DATA:
+    case SET_HTML_FILTER:
         status->rxBytesWaiting = status->connected = 0;
         status->error = NETWORK_ERROR_SUCCESS;
         return false;
@@ -354,6 +358,7 @@ bool NetworkProtocolHTTP::read_file_handle(uint8_t *buf, unsigned short len)
     case COLLECT_HEADERS:
     case SET_HEADERS:
     case SEND_POST_DATA:
+    case SET_HTML_FILTER:
         error = NETWORK_ERROR_WRITE_ONLY;
         return true;
     case GET_HEADERS:
@@ -438,6 +443,8 @@ bool NetworkProtocolHTTP::write_file_handle(uint8_t *buf, unsigned short len)
     {
     case DATA:
         return write_file_handle_data(buf, len);
+    case SET_HTML_FILTER:
+        return write_file_handle_set_html_filter(buf, len);
     case COLLECT_HEADERS:
         return write_file_handle_get_header(buf, len);
     case SET_HEADERS:
@@ -539,6 +546,14 @@ bool NetworkProtocolHTTP::write_file_handle_data(uint8_t *buf, unsigned short le
     }
 
     postData += string((char *)buf, len);
+    return false; // come back here later.
+}
+
+bool NetworkProtocolHTTP::write_file_handle_set_html_filter(uint8_t *buf, unsigned short len)
+{
+    string filter((char *)buf, len);
+    util_string_toupper(filter);
+    client->set_html_filter(filter.c_str());
     return false; // come back here later.
 }
 

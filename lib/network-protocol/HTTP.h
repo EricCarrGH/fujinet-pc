@@ -171,7 +171,8 @@ private:
         COLLECT_HEADERS,
         GET_HEADERS,
         SET_HEADERS,
-        SEND_POST_DATA
+        SEND_POST_DATA,
+        SET_HTML_FILTER
     } HTTPChannelMode;
 
     HTTPChannelMode httpChannelMode;
@@ -268,6 +269,14 @@ private:
      * @return true on ERROR FALSE on success
      */
     bool write_file_handle_set_header(uint8_t *buf, unsigned short len);
+
+    /**
+     * @brief header mode - set html response filter
+     * @param buf The target buffer
+     * @param len The target buffer length
+     * @return true on ERROR FALSE on success
+     */
+    bool write_file_handle_set_html_filter(uint8_t *buf, unsigned short len);
 
     /**
      * @brief post mode - write specified post data to server

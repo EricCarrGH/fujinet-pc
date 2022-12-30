@@ -3,6 +3,9 @@
 
 #include <string>
 #include <map>
+#include <sstream>
+#include <set>
+
 
 // http timeout in ms
 #define HTTP_TIMEOUT 7000
@@ -57,6 +60,21 @@ private:
 
     // http redirect location
     std::string _location;
+
+    // Html Filter
+    std::set<std::string> _html_filter_tags_allowed;
+    std::set<std::string> _html_filter_tags_disallowed;
+    std::set<std::string> _html_filter_attrs_allowed;
+    std::set<std::string> _html_filter_attrs_disallowed;
+    bool _apply_html_filter;
+    enum HtmlFilterMode 
+    {
+        FILTER_MODE_TEXT,
+        FILTER_MODE_TAG_NAME,
+        FILTER_MODE_ATTR_NAME,
+        FILTER_MODE_FIND_ATTR_VAL_STOP,
+        FILTER_MODE_ATTR_VAL
+    };
 
     // HTTP methods
     enum HttpMethod
@@ -123,7 +141,8 @@ public:
     bool set_url(const char *url);
 
     bool set_header(const char *header_key, const char *header_value);
-    
+    bool set_html_filter(const char *html_filter);
+
     const std::string get_header(const char *header);
     const std::string get_header(int index);
     char * get_header(int index, char *buffer, int buffer_len);
