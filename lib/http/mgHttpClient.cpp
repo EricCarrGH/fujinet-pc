@@ -423,7 +423,7 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
             bool in_pre = false; // If in PRE tag, do not filter out whitespace
             bool filter_attributes = client->_html_filter_attrs_allowed.size()>0 || 
                                      client->_html_filter_attrs_disallowed.size()>0;
-
+            char last_char = 0x20;
             for(int i=0;i< buffer_len;i++) {
                 // Keep looping until a stop character is reached
                 char c = client->_buffer[i];
@@ -431,10 +431,14 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
                 // Write to new location in buffer if not skipping and not whitespace
                 if (
                     !skip_char && (
+                        // Allow any character in <pre>
                         in_pre || (
+                            // Avoid non-legible characters
                             c>=0x20 && c<=0x7C && (
+                                // Avoid extra whitespace
                                 c!=0x20 || (
-                                    i==0 || client->_buffer[i-1] != 0x20
+                                    dest_index>0 && client->_buffer[dest_index-1] != ' ' &&
+                                    client->_buffer[dest_index-1] != '>'
                                 )
                             )
                         )
@@ -535,10 +539,9 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
                                 // Set filter mode to text, so it can find the end of the
                                 // tag it is skipping
                                 mode = FILTER_MODE_TEXT;
-
-                                #ifdef VERBOSE_HTTP
+#ifdef VERBOSE_HTTP
                                   Debug_printf(" <%s>", tag.c_str());
-                                #endif
+#endif
                             } 
                         }
 
@@ -568,9 +571,9 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
                                 // Roll back dest index to the start of the attribute
                                 dest_index-=(i-start+1);
                                 skip_char=true;
-                                #ifdef VERBOSE_HTTP
+#ifdef VERBOSE_HTTP
                                   Debug_printf(" %s", attr.c_str());
-                                #endif
+#endif
                             } 
 
                             mode= FILTER_MODE_FIND_ATTR_VAL_STOP;
@@ -595,7 +598,7 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
                         if (skip_char) {
                             skip_char = false;
 
-                            // If  the closing > was skipped, we need to write it out
+                            // If the closing > was skipped, we need to write it out
                             if (c=='>') {
                                 client->_buffer[dest_index++] = c;
                             }
@@ -612,15 +615,50 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
                         }
                         break;
                 }
+
+                // Trim extra spaces where we can
+                if (mode != FILTER_MODE_ATTR_VAL && i>dest_index) {
+                     if (dest_index > 2 && (
+                        (client->_buffer[dest_index-1]==' ' && client->_buffer[dest_index-2]==' ') ||
+                        (client->_buffer[dest_index-1]=='>' && client->_buffer[dest_index-2]==' ') 
+                     )) {
+                            client->_buffer[dest_index-2] = client->_buffer[dest_index-1];
+                            dest_index--;
+                        }
+                    
+                    for(int j=0;j<5;j++) {    
+                        if (dest_index > 3 && 
+                            client->_buffer[dest_index-1]=='>' && 
+                            client->_buffer[dest_index-2]=='/' && 
+                            client->_buffer[dest_index-3]==' ') {
+                                client->_buffer[dest_index-3] = client->_buffer[dest_index-2];
+                                client->_buffer[dest_index-2] = client->_buffer[dest_index-1];
+                                dest_index--;
+                            } else break;
+                    }
+                } 
             }
+
             if (dest_index < buffer_len) {
                 client->_buffer_len = dest_index;
-                 #ifdef VERBOSE_HTTP
+#ifdef VERBOSE_HTTP
                     Debug_printf("  Reduced response length from %i to %i\n",buffer_len, client->_buffer_len);
-                #endif
+#endif
                 
             }
         }
+
+        // A simple conversion of (assumed) ATASCII to INTERNAL for bytes<128
+        if (client->_convert_to_internal_encoding) {      
+            for(int i=client->_buffer_len-1;i>=0;i--) {
+                char c = client->_buffer[i];
+                client->_buffer[i]=c-(32*(c<96))+(96*(c<32));
+            }
+#ifdef VERBOSE_HTTP            
+            Debug_printf("  Changed encoding to Internal\n");
+#endif
+        }
+
 
         c->is_closing = 1;          // Tell mongoose to close this connection
         client->_processed = true;  // Tell event loop to stop
@@ -1256,6 +1294,7 @@ bool mgHttpClient::set_html_filter(const char *html_filter)
                 else if (filterName == "DA") _html_filter_attrs_disallowed.insert(val);
                 else if (filterName == "AT") _html_filter_tags_allowed.insert(val);                        
                 else if (filterName == "AA") _html_filter_attrs_allowed.insert(val);
+                else if (filterName == "ENCODING" && val=="INTERNAL") _convert_to_internal_encoding = true;
             }
         }
     }

@@ -66,6 +66,8 @@ private:
     std::set<std::string> _html_filter_tags_disallowed;
     std::set<std::string> _html_filter_attrs_allowed;
     std::set<std::string> _html_filter_attrs_disallowed;
+    bool _convert_to_internal_encoding;
+
     bool _apply_html_filter;
     enum HtmlFilterMode 
     {
