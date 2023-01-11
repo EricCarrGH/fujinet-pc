@@ -653,6 +653,7 @@ void mgHttpClient::_httpevent_handler(struct mg_connection *c, int ev, void *ev_
             for(int i=client->_buffer_len-1;i>=0;i--) {
                 char c = client->_buffer[i];
                 client->_buffer[i]=c-(32*(c<96))+(96*(c<32));
+                if (c==0x60) client->_buffer[i]=7; // ' char
             }
 #ifdef VERBOSE_HTTP            
             Debug_printf("  Changed encoding to Internal\n");
