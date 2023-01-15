@@ -3,9 +3,8 @@
 
 #include <string>
 #include <map>
-#include <sstream>
-#include <set>
 
+#include "htmlFilter.h"
 
 // http timeout in ms
 #define HTTP_TIMEOUT 7000
@@ -62,21 +61,8 @@ private:
     std::string _location;
 
     // Html Filter
-    std::set<std::string> _html_filter_tags_allowed;
-    std::set<std::string> _html_filter_tags_disallowed;
-    std::set<std::string> _html_filter_attrs_allowed;
-    std::set<std::string> _html_filter_attrs_disallowed;
-    bool _convert_to_internal_encoding;
-
-    bool _apply_html_filter;
-    enum HtmlFilterMode 
-    {
-        FILTER_MODE_TEXT,
-        FILTER_MODE_TAG_NAME,
-        FILTER_MODE_ATTR_NAME,
-        FILTER_MODE_FIND_ATTR_VAL_STOP,
-        FILTER_MODE_ATTR_VAL
-    };
+    bool _use_html_filter;
+    HtmlFilter _html_filter;
 
     // HTTP methods
     enum HttpMethod
